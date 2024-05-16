@@ -12,65 +12,17 @@
 ///<reference path="p5.global-mode.d.ts" />
 "use strict"
 
-/* ********************************************* */
-/* globale variabelen die je gebruikt in je game */
-/* ********************************************* */
-const SPELEN = 1;
-const GAMEOVER = 2;
-var spelStatus = SPELEN;
+const MUTATION_CHANGE = 0.05;
 
-var spelerX = 600; // x-positie van speler
-var spelerY = 600; // y-positie van speler
-var health = 100;  // health van speler
+let label;
+let teRadenWoordInput;
+let startButton;
+let nextGenerationButton;
 
-/* ********************************************* */
-/* functies die je gebruikt in je game           */
-/* ********************************************* */
+let currentGeneration;
+let currentTotalScore;
+let teRadenWoord;
 
-/**
- * Updatet globale variabelen met posities van speler, vijanden en kogels
- */
-var beweegAlles = function() {
-  // speler
-
-  // vijand
-
-  // kogel
-};
-
-/**
- * Checkt botsingen
- * Verwijdert neergeschoten dingen
- * Updatet globale variabelen punten en health
- */
-var verwerkBotsing = function() {
-  // botsing speler tegen vijand
-
-  // botsing kogel tegen vijand
-
-  // update punten en health
-
-};
-
-/**
- * Tekent spelscherm
- */
-var tekenAlles = function() {
-  // achtergrond
-
-  // vijand
-
-  // kogel
-
-  // speler
-  fill("white");
-  rect(spelerX - 25, spelerY - 25, 50, 50);
-  fill("black");
-  ellipse(spelerX, spelerY, 10, 10);
-
-  // punten en health
-
-};
 
 /* ********************************************* */
 /* setup() en draw() functies / hoofdprogramma   */
@@ -82,12 +34,25 @@ var tekenAlles = function() {
  * de p5 library, zodra het spel geladen is in de browser
  */
 function setup() {
-  // Maak een canvas (rechthoek) waarin je je speelveld kunt tekenen
-  createCanvas(1280, 720);
+  createCanvas(400, 400);
 
-  // Kleur de achtergrond blauw, zodat je het kunt zien
-  background('blue');
+  label = createP("Voer een woord van 8 kleine letters in");
+  label.position(450, 0);
+
+  teRadenWoordInput = createInput();
+  teRadenWoordInput.position(450, 40);
+  teRadenWoordInput.attribute("maxLength", 8)
+
+  startButton = createButton("Start")
+  startButton.position(450, 80);
+  startButton.mouseClicked(start)
+
+  nextGenerationButton = createButton("Next generation");
+  nextGenerationButton.position(450, 120);
+  nextGenerationButton.attribute("disabled", true)
+  nextGenerationButton.mouseClicked(nextIteration);
 }
+
 
 /**
  * draw
@@ -95,15 +60,140 @@ function setup() {
  * uitgevoerd door de p5 library, nadat de setup functie klaar is
  */
 function draw() {
-  if (spelStatus === SPELEN) {
-    beweegAlles();
-    verwerkBotsing();
-    tekenAlles();
-    if (health <= 0) {
-      spelStatus = GAMEOVER;
+  background('gray');
+}
+
+function start() {
+  if (teRadenWoordInput.value().length < 8) {
+    window.alert("woord kleiner dan 8 tekens");
+    return;
+  }
+
+  startButton.attribute("disabled", true);
+  nextGenerationButton.removeAttribute("disabled");
+
+  teRadenWoord = teRadenWoordInput.value();
+  createFirstGeneration();
+
+  for (let i = 0; i < currentGeneration.length; i++) {
+    calculateSolutionFitness(currentGeneration[i])
+  }
+
+  console.log("beste oplossing: ", bestCurrentSolution());
+}
+
+function nextIteration() {
+  let newGeneration = []
+
+  // creëer een nieuwe generatie:
+  // kies twee oplossingen
+  calculateTotalScore();
+  let solA = rouletteWheelSelection()
+  let solB = rouletteWheelSelection()
+  while (solA === solB) {
+    solB = rouletteWheelSelection()
+  }
+
+  console.log(solA);
+  console.log(solB);
+
+  // maak twee nieuwe oplossingen door uitwisseling
+  // en zet die in de nieuwe generatie
+  
+  
+  // vervang de oude generatie
+  currentGeneration = newGeneration
+
+
+}
+
+
+function createRandomSolution() {
+  var result = '';
+  var characters = 'abcdefghijklmnopqrstuvwxyz';
+  var charactersLength = characters.length;
+  for (var i = 0; i < 8; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return {value: result}
+}
+
+
+function createFirstGeneration() {
+  currentGeneration = [];
+
+  for (let i = 0; i < 20; i++) {
+    currentGeneration.push(createRandomSolution());
+  }
+
+  console.log(currentGeneration);
+}
+
+
+function calculateSolutionFitness(solution) {
+  let score = 1;
+  for (let i = 0; i < 8; i++) {
+    if (solution.value[i] === teRadenWoord[i]) {
+      score = score * 2;
+      console.log("letter is hetzelfde");
     }
   }
-  if (spelStatus === GAMEOVER) {
-    // teken game-over scherm
+
+  return solution.score = score;
+}
+
+
+function calculateTotalScore() {
+  currentTotalScore = 0;
+  for (let index = 0; index < currentGeneration.length; index++) {
+    const solution = currentGeneration[index];
+    currentTotalScore = currentTotalScore + solution.score
   }
+
+  console.log("totalscore is " + currentTotalScore)
+}
+
+
+function rouletteWheelSelection() {
+  let rouletteNumber = random(currentTotalScore);
+  let searchNumber = 0;
+
+  for(let i = 0; i<currentGeneration.length; i++) {
+    searchNumber = searchNumber + currentGeneration[i].score
+    if (searchNumber >= rouletteNumber) {
+      return currentGeneration[i];
+    }
+  }
+}
+
+
+function bestCurrentSolution() {
+  let bestSolution = currentGeneration[0];
+
+  for (let i = 0; i < currentGeneration.length; i++) {
+    if (currentGeneration[i].score > bestSolution.score) {
+      bestSolution = currentGeneration[i];
+    }
+  }
+
+  return bestSolution;
+}
+
+
+function solutionWidthCrossOver(solA, solB) {
+
+}
+
+
+function mutate(solution) {
+  let roll = random(1)
+  if (roll < MUTATION_CHANGE) {
+    let characterIndex = floor(random(8))
+    solution.value[characterIndex] = getRandomLowerCaseLetter()
+  }
+}
+
+function getRandomLowerCaseLetter() {
+  var randomCharCode = Math.floor(Math.random() * 26) + 97; // ASCII-waarden voor 'a' tot 'z' zijn 97 tot 122
+  return String.fromCharCode(randomCharCode);
 }
