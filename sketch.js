@@ -14,7 +14,8 @@
 
 const MUTATION_CHANGE = 0.5;
 const GENERATION_SIZE = 50;
-const ELITE_SIZE = 4;
+const ELITE_SIZE = 2;
+const RANDOM_INSERT_NUMBER = 20;
 
 
 let label;
@@ -22,6 +23,7 @@ let teRadenWoordInput;
 let startButton;
 let nextGenerationButton;
 
+let generationNumber;
 let currentGeneration;
 let currentTotalScore;
 let teRadenWoord;
@@ -67,6 +69,11 @@ function draw() {
 }
 
 function start() {
+  currentGeneration = [];
+  currentTotalScore = 0;
+  generationNumber = 0;
+
+
   if (teRadenWoordInput.value().length < 8) {
     window.alert("woord kleiner dan 8 tekens");
     return;
@@ -84,9 +91,11 @@ function start() {
 }
 
 function iterate() {
-  let generationNumber = 1;
   while (currentGeneration[0].value != teRadenWoord) {
     generationNumber++;
+    if (generationNumber % 1000 === 0) {
+      console.log("evt. een break");
+    }
     nextIteration();
     console.log("generatie: ", generationNumber);
   }
@@ -102,17 +111,32 @@ function nextIteration() {
   // kies twee oplossingen
   calculateTotalScore();
 
-  for (let i = 0; i < ELITE_SIZE; i++) {
-    newGeneration.push(currentGeneration[i]);
+  for (let i = 0; newGeneration.length < ELITE_SIZE; i++) {
+    let oplossingReedsAanwezig = false;
+    for (let j = 0; j < newGeneration.length; j++) {
+      if (currentGeneration[i].value === newGeneration[j].value) {
+        oplossingReedsAanwezig = true;
+      }
+    }
+    if (!oplossingReedsAanwezig) {
+      newGeneration.push(currentGeneration[i]);
+    }
   }
 
   console.log("Twee beste oplossingen meenemen naar nieuwe generatie", newGeneration)
 
-  for (let i = 0; i < ((GENERATION_SIZE - ELITE_SIZE) / 2); i++) {
-    let solA = rouletteWheelSelection()
-    let solB = rouletteWheelSelection()
+  if (generationNumber % 25 === 0) {
+    for (let i = 0; i < RANDOM_INSERT_NUMBER; i++) {
+      newGeneration.push(createRandomSolution());
+    }
+  }
+
+
+  while (newGeneration.length < GENERATION_SIZE) {
+    let solA = tournamentSelection()
+    let solB = tournamentSelection()
     while (solA === solB) {
-      solB = rouletteWheelSelection()
+      solB = tournamentSelection()
     }
 
     // maak twee nieuwe oplossingen door uitwisseling
@@ -171,7 +195,7 @@ function createFirstGeneration() {
 
 
 function calculateSolutionFitness(solution) {
-  let score = 1;
+  let score = 0;
   for (let i = 0; i < 8; i++) {
     if (solution.value[i] === teRadenWoord[i]) {
       score = score + 1;
@@ -203,6 +227,17 @@ function rouletteWheelSelection() {
     if (searchNumber >= rouletteNumber) {
       return currentGeneration[i];
     }
+  }
+}
+
+function tournamentSelection() {
+  let solA = currentGeneration[floor(random(currentGeneration.length))];
+  let solB = currentGeneration[floor(random(currentGeneration.length))];
+  if (solA.score > solB.score) {
+    return solA;
+  }
+  else {
+    return solB;
   }
 }
 
@@ -238,22 +273,31 @@ function solutionWithCrossOver(solA, solB) {
     }
   }
 
+  // let breakIndex = floor(random(8));
+  // let newSolA = { value: "" };
+  // let newSolB = { value: "" };
+
+  // newSolA.value = solA.value.substring(0, breakIndex) + solB.value.substring(breakIndex)
+  // newSolB.value = solB.value.substring(0, breakIndex) + solA.value.substring(breakIndex)
+
   return [newSolA, newSolB];
 }
 
 
 function mutate(solution) {
-  let roll = random(1)
-  if (roll < MUTATION_CHANGE) {
-    let characterIndex = floor(random(8))
-    let first = solution.value.substring(0, characterIndex - 1);
-    let last = "";
-    if (characterIndex < 6) {
-      last = solution.value.substring(characterIndex)
+  let valueAfterMutation = ""
+  for (let characterIndex = 0; characterIndex < 8; characterIndex++) {
+    let roll = random(1)
+    if (roll < MUTATION_CHANGE) {
+      valueAfterMutation = valueAfterMutation + getRandomLowerCaseLetter;
     }
-
-    solution.value = first + getRandomLowerCaseLetter() + last
+    else {
+      valueAfterMutation = valueAfterMutation + solution.value[characterIndex]
+    }
   }
+
+  solution.value = valueAfterMutation;
+
 }
 
 function getRandomLowerCaseLetter() {
